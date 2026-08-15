@@ -1,0 +1,22 @@
+---
+description: AnyIT Institute CMS product and fees conventions (carry across machines via git)
+alwaysApply: true
+---
+
+# Institute CMS conventions
+
+Read `AGENTS.md` at the repo root for stack, commands, and fee rules.
+
+## Must preserve
+
+- Save as Paid → settle oldest open invoices; remainder / no dues → `source: 'advance'`.
+- One user payment → one `paymentBatchId` / one Payments history line.
+- Student “Payments received this month” → group by **paidAt** (local calendar month); merge batches.
+- Inactive academic sessions → year closed (pending 0 for display); do not treat prior-year dues as live pending after promotion.
+- Fee month table carry-forward (Prev. due / Month due / Balance); settled prior months green.
+- Do not blank full pages on refresh; use silent reload patterns already in list/detail views.
+- Keep Create invoice on `DraggableDialog` (wide enough; select/picker z-index above dialog).
+
+## Session continuity
+
+Prior chat exports: `docs/session-history/`. Prefer continuing from project rules + that history over inventing new fee behavior.

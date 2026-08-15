@@ -1,0 +1,87 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Builds / caches
+dist/
+build/
+out/
+.turbo/
+.cache/
+.vite/
+*.tsbuildinfo
+*.tsbuildinfo.*
+
+# Environment & secrets (keep .env.example)
+.env
+.env.*
+!.env.example
+!.env*.example
+apps/*/.env
+apps/*/.env.*
+!apps/*/.env.example
+packages/*/.env
+packages/*/.env.*
+
+# Logs & debug
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Uploads & local runtime data
+uploads/
+tmp/
+temp/
+*.local
+
+# Test / coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# OS
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editors / IDEs
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+*.swp
+*.swo
+*~
+
+# Cursor / agent tooling (keep shared rules in git)
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
+.qodo/
+
+# Optional: large raw chat dumps (summaries in docs/session-history stay tracked)
+docs/session-history/export-*.jsonl
+docs/session-history/*.jsonl
+!docs/session-history/README.md
+!docs/session-history/SUMMARY-*.md
+
+# Mongo / backups (local)
+*.dump
+*.archive
+backups/
+mongo-backup/
+
+# Docker overrides (local)
+docker-compose.override.yml
+
+# Misc
+*.pem
+*.key
+.eslintcache
+.stylelintcache

@@ -1,0 +1,26 @@
+{
+  "name": "anyit-institute-cms",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Enterprise Institute CMS — Vue 3 + Express + MongoDB",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green npm:dev:api npm:dev:web",
+    "dev:api": "npm run dev -w @anyit/api",
+    "dev:web": "npm run dev -w @anyit/web",
+    "build": "npm run build -w @anyit/shared && npm run build -w @anyit/api && npm run build -w @anyit/web",
+    "seed": "npm run seed -w @anyit/api",
+    "seed:reset": "npm run seed:reset -w @anyit/api",
+    "export:session": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/export-cursor-session.ps1",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.4"
+  }
+}
