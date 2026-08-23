@@ -20,3 +20,5 @@ Read `AGENTS.md` at the repo root for stack, commands, and fee rules.
 ## Session continuity
 
 Prior chat exports: `docs/session-history/`. Prefer continuing from project rules + that history over inventing new fee behavior.
+
+Laptop data: `npm run data:export` then commit `data/snapshot`; after `git pull` run `npm run data:import`. Do not `seed:reset` after import.

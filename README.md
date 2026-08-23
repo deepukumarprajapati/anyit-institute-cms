@@ -35,6 +35,31 @@ Or separately: `npm run dev:api` / `npm run dev:web`.
 
 Both servers bind to `0.0.0.0` so other devices on the same network can connect. Allow ports **5173** and **4000** in Windows Firewall if prompted.
 
+## Sync code + data to another laptop
+
+Git tracks the app. The working **database** and **uploaded files** (logo, campus picture, event photos) are snapshotted into `data/snapshot/`.
+
+On the laptop that has the latest work:
+
+```bash
+npm run data:export
+git add data/snapshot
+git commit -m "Sync CMS data snapshot"
+git push
+```
+
+On the other laptop:
+
+```bash
+git pull
+docker compose up -d
+npm install
+npm run data:import
+npm run dev
+```
+
+`data:import` replaces the local Mongo database and `apps/api/uploads`. Do not run `npm run seed:reset` after import.
+
 ## Demo logins
 
 | Role | Email | Password |

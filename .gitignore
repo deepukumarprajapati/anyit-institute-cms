@@ -32,7 +32,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Uploads & local runtime data
+# Live uploads (runtime). Portable copy is data/snapshot/files — keep that tracked.
 uploads/
 tmp/
 temp/

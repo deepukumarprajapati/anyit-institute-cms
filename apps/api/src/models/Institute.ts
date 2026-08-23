@@ -8,6 +8,7 @@ export interface IInstitute {
   phone?: string;
   address?: string;
   logoUrl?: string;
+  loginBackgroundUrl?: string;
   settings: {
     timezone: string;
     currency: string;
@@ -27,6 +28,7 @@ const instituteSchema = new Schema<IInstitute>(
     phone: String,
     address: String,
     logoUrl: String,
+    loginBackgroundUrl: String,
     settings: {
       timezone: { type: String, default: 'Asia/Kolkata' },
       currency: { type: String, default: 'INR' },

@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { env } from '../config/env';
 import { authenticate, signAccessToken, signRefreshToken } from '../middleware/auth';
+import { Institute } from '../models/Institute';
 import { Role } from '../models/Role';
 import { User } from '../models/User';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -17,6 +18,20 @@ const loginSchema = z.object({
 });
 
 export const authRouter = Router();
+
+authRouter.get(
+  '/branding',
+  asyncHandler(async (_req, res) => {
+    const institute = await Institute.findOne({ ...notDeleted() }).select(
+      'name logoUrl loginBackgroundUrl'
+    );
+    return ok(res, {
+      name: institute?.name ?? 'ANYIT INSTITUTE',
+      logoUrl: institute?.logoUrl ?? '',
+      loginBackgroundUrl: institute?.loginBackgroundUrl ?? '',
+    });
+  })
+);
 
 authRouter.post(
   '/login',

@@ -39,6 +39,7 @@ instituteRouter.patch(
         phone: z.string().optional(),
         address: z.string().optional(),
         logoUrl: z.string().optional(),
+        loginBackgroundUrl: z.string().optional(),
         settings: z
           .object({
             timezone: z.string().optional(),

@@ -14,6 +14,8 @@
     "build": "npm run build -w @anyit/shared && npm run build -w @anyit/api && npm run build -w @anyit/web",
     "seed": "npm run seed -w @anyit/api",
     "seed:reset": "npm run seed:reset -w @anyit/api",
+    "data:export": "npm run data:export -w @anyit/api",
+    "data:import": "npm run data:import -w @anyit/api",
     "export:session": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/export-cursor-session.ps1",
     "lint": "npm run lint --workspaces --if-present"
   },

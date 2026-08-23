@@ -1,7 +1,7 @@
 <template>
-  <div class="login-shell">
+  <div class="login-shell" :style="shellStyle">
     <section class="login-hero">
-      <a-typography-text style="color: rgba(255, 255, 255, 0.85)">ANYIT INSTITUTE</a-typography-text>
+      <a-typography-text style="color: rgba(255, 255, 255, 0.85)">{{ instituteName }}</a-typography-text>
       <h1>Campus operations,<br />one control plane.</h1>
       <p>Manage students, staff, fees, attendance, and more from a single enterprise CMS.</p>
     </section>
@@ -30,19 +30,44 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
+import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+
+const DEFAULT_CAMPUS_BG =
+  'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1600&q=80';
 
 const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 const error = ref('');
+const instituteName = ref('ANYIT INSTITUTE');
+const loginBackgroundUrl = ref('');
 const form = reactive({
   email: 'admin@anyit.local',
   password: 'Admin@12345',
 });
+
+const shellStyle = computed(() => {
+  const url = loginBackgroundUrl.value || DEFAULT_CAMPUS_BG;
+  return {
+    backgroundImage: `linear-gradient(135deg, rgba(15, 92, 76, 0.92), rgba(15, 92, 76, 0.55)), url("${url}")`,
+  };
+});
+
+async function loadBranding() {
+  try {
+    const { data } = await api.get('/auth/branding');
+    instituteName.value = data.data.name || 'ANYIT INSTITUTE';
+    loginBackgroundUrl.value = data.data.loginBackgroundUrl || '';
+  } catch {
+    /* keep default campus image */
+  }
+}
+
+onMounted(loadBranding);
 
 async function onSubmit() {
   error.value = '';

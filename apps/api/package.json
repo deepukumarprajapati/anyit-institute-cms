@@ -8,6 +8,8 @@
     "start": "node dist/index.js",
     "seed": "tsx src/seed.ts",
     "seed:reset": "tsx src/seed.ts --reset",
+    "data:export": "tsx src/scripts/syncData.ts export",
+    "data:import": "tsx src/scripts/syncData.ts import",
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

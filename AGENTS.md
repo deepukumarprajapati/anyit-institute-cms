@@ -14,9 +14,13 @@ even when the old chat UI is not synced (Cursor stores local chats per laptop).
 ```bash
 npm install
 npm run dev          # api + web
-npm run seed         # seed data
-npm run seed:reset   # drop DB + reseed
+npm run seed         # seed data (empty machine only)
+npm run seed:reset   # drop DB + reseed (wipes local + synced data)
+npm run data:export  # snapshot Mongo + uploads into data/snapshot (commit + push)
+npm run data:import  # after git pull: restore snapshot into local Mongo + uploads
 ```
+
+Laptop sync: export → commit `data/snapshot` → push. On the other machine: pull → `docker compose up -d` → `npm run data:import`. Do not `seed:reset` after import.
 
 ## Fees / payments (important product rules)
 

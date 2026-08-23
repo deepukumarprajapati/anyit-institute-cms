@@ -72,6 +72,42 @@
         </a-card>
       </a-col>
     </a-row>
+
+    <a-card title="Login page background" style="margin-top: 16px">
+      <p style="color: rgba(0, 0, 0, 0.45); margin-top: 0">
+        Campus picture shown behind the sign-in screen. The green overlay stays in place. JPG, PNG, or
+        WebP up to 5 MB.
+      </p>
+      <div v-if="form.loginBackgroundUrl" style="margin-bottom: 12px">
+        <img
+          :src="form.loginBackgroundUrl"
+          alt="Login background"
+          style="width: 100%; max-height: 240px; object-fit: cover; border-radius: 8px"
+        />
+      </div>
+      <a-typography-text v-else type="secondary" style="display: block; margin-bottom: 12px">
+        Using the default campus image.
+      </a-typography-text>
+      <a-space>
+        <a-upload
+          v-if="auth.can('uploads.manage')"
+          :show-upload-list="false"
+          accept="image/*"
+          :before-upload="beforeCampusUpload"
+          :custom-request="uploadLoginBackground"
+        >
+          <a-button type="primary">
+            {{ form.loginBackgroundUrl ? 'Replace campus picture' : 'Upload campus picture' }}
+          </a-button>
+        </a-upload>
+        <a-button
+          v-if="form.loginBackgroundUrl && auth.can('institute.update')"
+          @click="clearLoginBackground"
+        >
+          Use default
+        </a-button>
+      </a-space>
+    </a-card>
   </div>
 </template>
 
@@ -91,6 +127,7 @@ const form = reactive({
   phone: '',
   address: '',
   logoUrl: '',
+  loginBackgroundUrl: '',
   settings: { currency: 'INR', timezone: 'Asia/Kolkata' },
 });
 const campus = reactive({ name: '', code: '' });
@@ -103,6 +140,7 @@ async function load() {
     phone: inst.data.data.phone || '',
     address: inst.data.data.address || '',
     logoUrl: inst.data.data.logoUrl || '',
+    loginBackgroundUrl: inst.data.data.loginBackgroundUrl || '',
     settings: {
       currency: inst.data.data.settings?.currency || 'INR',
       timezone: inst.data.data.settings?.timezone || 'Asia/Kolkata',
@@ -139,6 +177,45 @@ async function uploadLogo(options: UploadRequestOption) {
   await api.patch('/institute', { logoUrl: form.logoUrl });
   message.success('Logo uploaded');
   options.onSuccess?.(data);
+}
+
+function beforeCampusUpload(file: File) {
+  if (!file.type.startsWith('image/')) {
+    message.error('Please choose an image file');
+    return false;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    message.error('Image must be 5 MB or smaller');
+    return false;
+  }
+  return true;
+}
+
+async function uploadLoginBackground(options: UploadRequestOption) {
+  try {
+    const body = new FormData();
+    body.append('file', options.file as File);
+    const { data } = await api.post('/uploads', body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    form.loginBackgroundUrl = data.data.url;
+    await api.patch('/institute', { loginBackgroundUrl: form.loginBackgroundUrl });
+    message.success('Campus picture uploaded');
+    options.onSuccess?.(data);
+  } catch (e) {
+    options.onError?.(e as Error);
+    message.error('Campus picture upload failed');
+  }
+}
+
+async function clearLoginBackground() {
+  try {
+    await api.patch('/institute', { loginBackgroundUrl: '' });
+    form.loginBackgroundUrl = '';
+    message.success('Login page will use the default campus image');
+  } catch {
+    message.error('Could not reset login background');
+  }
 }
 
 onMounted(load);
