@@ -15,7 +15,7 @@ import { Student, Enrollment } from './models/Student';
 import { Staff } from './models/Staff';
 import { StudentAttendance, StaffAttendance, Holiday } from './models/Attendance';
 import { SalaryStructure, Payroll } from './models/Salary';
-import { Vehicle, TransportRoute, StudentTransport, TransportFeeTier } from './models/Transport';
+import { Vehicle, TransportCrew, TransportDuty, TransportRelief, TransportRoute, StudentTransport, StudentTransportLog, TransportFeeTier } from './models/Transport';
 import { Event } from './models/Event';
 import {
   AcademicMark,
@@ -875,24 +875,21 @@ async function seed() {
       number: 'UP16AB1234',
       type: 'bus',
       capacity: 40,
-      driverName: 'Ramesh Yadav',
-      driverPhone: '+91-9800011001',
+      routeNumber: '1',
       campusCode: 'MAIN',
     },
     {
       number: 'UP14CD5678',
       type: 'bus',
       capacity: 35,
-      driverName: 'Suresh Pal',
-      driverPhone: '+91-9800011002',
+      routeNumber: '2',
       campusCode: 'EAST',
     },
     {
       number: 'DL01EF9012',
       type: 'van',
       capacity: 12,
-      driverName: 'Imran Ali',
-      driverPhone: '+91-9800011003',
+      routeNumber: '3',
       campusCode: 'MAIN',
     },
   ];
@@ -904,8 +901,7 @@ async function seed() {
         $set: {
           type: def.type,
           capacity: def.capacity,
-          driverName: def.driverName,
-          driverPhone: def.driverPhone,
+          routeNumber: def.routeNumber,
           campusId: campuses[def.campusCode]._id,
           deletedAt: null,
         },
@@ -915,6 +911,72 @@ async function seed() {
     );
     vehicles[def.number] = doc!;
   }
+
+  const crewDefs = [
+    {
+      role: 'driver' as const,
+      name: 'Ramesh Yadav',
+      phone: '+91-9800011001',
+      vehicleNumber: 'UP16AB1234',
+    },
+    {
+      role: 'conductor' as const,
+      name: 'Sunita Devi',
+      phone: '+91-9800011101',
+      vehicleNumber: 'UP16AB1234',
+    },
+    {
+      role: 'driver' as const,
+      name: 'Suresh Pal',
+      phone: '+91-9800011002',
+      vehicleNumber: 'UP14CD5678',
+    },
+    {
+      role: 'conductor' as const,
+      name: 'Pooja Sharma',
+      phone: '+91-9800011102',
+      vehicleNumber: 'UP14CD5678',
+    },
+    {
+      role: 'driver' as const,
+      name: 'Imran Ali',
+      phone: '+91-9800011003',
+      vehicleNumber: 'DL01EF9012',
+    },
+    {
+      role: 'driver' as const,
+      name: 'Vijay Kumar',
+      phone: '+91-9800011099',
+      vehicleNumber: '',
+    },
+  ];
+  const crewByKey: Record<string, NonNullable<Awaited<ReturnType<typeof TransportCrew.findOne>>>> = {};
+  for (const def of crewDefs) {
+    const vehicle = def.vehicleNumber ? vehicles[def.vehicleNumber] : null;
+    const crew = await TransportCrew.findOneAndUpdate(
+      { instituteId: institute._id, role: def.role, name: def.name },
+      {
+        $set: {
+          phone: def.phone,
+          photoUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(def.name)}`,
+          vehicleId: vehicle?._id,
+          deletedAt: null,
+        },
+        $setOnInsert: { instituteId: institute._id, role: def.role, name: def.name },
+      },
+      { upsert: true, new: true }
+    );
+    crewByKey[`${def.role}:${def.name}`] = crew!;
+    if (!vehicle) continue;
+    const idField = def.role === 'driver' ? 'driverId' : 'conductorId';
+    const extra =
+      def.role === 'driver' ? { driverName: def.name, driverPhone: def.phone } : {};
+    await Vehicle.updateOne(
+      { _id: vehicle._id },
+      { $set: { [idField]: crew!._id, ...extra } }
+    );
+  }
+  console.log('[seed] transport vehicles and crew upserted');
 
   const routeDefs = [
     {
@@ -964,6 +1026,170 @@ async function seed() {
     );
     routesByName[def.name] = doc!;
   }
+
+  const vehicleTimings = [
+    {
+      number: 'UP16AB1234',
+      timings: [
+        { time: '07:10', route: 'Route 1', routeId: routesByName['Route A — Noida Express']._id },
+        { time: '14:15', route: 'Route 2', routeId: routesByName['Route B — Indirapuram Loop']._id },
+      ],
+    },
+    {
+      number: 'UP14CD5678',
+      timings: [
+        { time: '07:05', route: 'Route 2', routeId: routesByName['Route B — Indirapuram Loop']._id },
+        { time: '13:50', route: 'Route 2', routeId: routesByName['Route B — Indirapuram Loop']._id },
+      ],
+    },
+    {
+      number: 'DL01EF9012',
+      timings: [
+        { time: '07:30', route: 'Route 3', routeId: routesByName['Route C — Staff Van']._id },
+        { time: '16:00', route: 'Route 1', routeId: routesByName['Route A — Noida Express']._id },
+      ],
+    },
+  ];
+  for (const def of vehicleTimings) {
+    await Vehicle.updateOne({ _id: vehicles[def.number]._id }, { $set: { timings: def.timings } });
+  }
+
+  const dutyDefs = [
+    {
+      vehicleNumber: 'UP16AB1234',
+      dateFrom: '2026-04-01',
+      dateTo: '2026-05-31',
+      route: 'Route 1',
+      routeName: 'Route A — Noida Express',
+      time: '07:10',
+      driver: 'Ramesh Yadav',
+      conductor: 'Sunita Devi',
+    },
+    {
+      vehicleNumber: 'UP16AB1234',
+      dateFrom: '2026-06-01',
+      dateTo: '2026-07-15',
+      route: 'Route 2',
+      routeName: 'Route B — Indirapuram Loop',
+      time: '14:15',
+      driver: 'Ramesh Yadav',
+      conductor: 'Sunita Devi',
+    },
+    {
+      vehicleNumber: 'UP16AB1234',
+      dateFrom: '2026-07-16',
+      dateTo: '',
+      route: 'Route 1',
+      routeName: 'Route A — Noida Express',
+      time: '07:10',
+      driver: 'Ramesh Yadav',
+      conductor: 'Sunita Devi',
+    },
+    {
+      vehicleNumber: 'UP14CD5678',
+      dateFrom: '2026-04-01',
+      dateTo: '2026-06-30',
+      route: 'Route 2',
+      routeName: 'Route B — Indirapuram Loop',
+      time: '07:05',
+      driver: 'Suresh Pal',
+      conductor: 'Pooja Sharma',
+    },
+    {
+      vehicleNumber: 'UP14CD5678',
+      dateFrom: '2026-07-01',
+      dateTo: '',
+      route: 'Route 2',
+      routeName: 'Route B — Indirapuram Loop',
+      time: '07:05',
+      driver: 'Suresh Pal',
+      conductor: 'Pooja Sharma',
+    },
+    {
+      vehicleNumber: 'DL01EF9012',
+      dateFrom: '2026-04-01',
+      dateTo: '2026-06-30',
+      route: 'Route 3',
+      routeName: 'Route C — Staff Van',
+      time: '07:30',
+      driver: 'Imran Ali',
+      conductor: '',
+    },
+    {
+      vehicleNumber: 'DL01EF9012',
+      dateFrom: '2026-07-01',
+      dateTo: '',
+      route: 'Route 1',
+      routeName: 'Route A — Noida Express',
+      time: '16:00',
+      driver: 'Imran Ali',
+      conductor: '',
+    },
+  ];
+  for (const def of dutyDefs) {
+    const vehicle = vehicles[def.vehicleNumber];
+    await TransportDuty.findOneAndUpdate(
+      {
+        instituteId: institute._id,
+        vehicleId: vehicle._id,
+        dateFrom: def.dateFrom,
+        route: def.route,
+        time: def.time,
+      },
+      {
+        $set: {
+          dateTo: def.dateTo || undefined,
+          routeId: routesByName[def.routeName]._id,
+          driverId: crewByKey[`driver:${def.driver}`]?._id,
+          conductorId: def.conductor ? crewByKey[`conductor:${def.conductor}`]?._id : undefined,
+          deletedAt: null,
+        },
+        $setOnInsert: {
+          instituteId: institute._id,
+          vehicleId: vehicle._id,
+          dateFrom: def.dateFrom,
+          route: def.route,
+          time: def.time,
+        },
+      },
+      { upsert: true }
+    );
+  }
+
+  const rameshDuty = await TransportDuty.findOne({
+    instituteId: institute._id,
+    vehicleId: vehicles['UP16AB1234']._id,
+    dateFrom: '2026-07-16',
+    deletedAt: null,
+  });
+  if (rameshDuty && crewByKey['driver:Ramesh Yadav'] && crewByKey['driver:Vijay Kumar']) {
+    await TransportRelief.findOneAndUpdate(
+      {
+        instituteId: institute._id,
+        dutyId: rameshDuty._id,
+        dateFrom: '2026-08-10',
+        originalId: crewByKey['driver:Ramesh Yadav']._id,
+      },
+      {
+        $set: {
+          dateTo: '2026-08-12',
+          role: 'driver',
+          reliefId: crewByKey['driver:Vijay Kumar']._id,
+          reason: 'emergency_leave',
+          notes: 'Emergency leave — spare driver covered Route 1',
+          deletedAt: null,
+        },
+        $setOnInsert: {
+          instituteId: institute._id,
+          dutyId: rameshDuty._id,
+          dateFrom: '2026-08-10',
+          originalId: crewByKey['driver:Ramesh Yadav']._id,
+        },
+      },
+      { upsert: true }
+    );
+  }
+  console.log('[seed] transport duty history upserted');
 
   const tierDefs = [
     { name: 'Up to 5 km', maxKm: 5, monthlyAmount: 1600 },
@@ -1069,6 +1295,120 @@ async function seed() {
     transportAdmissionNos: transportAssignments.map((t) => t.admissionNo),
   });
   console.log('[seed] two-year history ready:', historyRange.from, '→', historyRange.to);
+
+  const routeA = routesByName['Route A — Noida Express'];
+  const routeB = routesByName['Route B — Indirapuram Loop'];
+  const boardingLogs = [
+    {
+      admissionNo: 'ADM25001',
+      routeId: routeA._id,
+      stopName: 'Sector 18 Metro',
+      dateFrom: '2026-04-01',
+      dateTo: '',
+      changeType: 'assigned',
+    },
+    {
+      admissionNo: 'ADM25002',
+      routeId: routeB._id,
+      stopName: 'Shipra Mall',
+      dateFrom: '2026-04-01',
+      dateTo: '2026-08-09',
+      changeType: 'route_changed',
+    },
+    {
+      admissionNo: 'ADM25002',
+      routeId: routeA._id,
+      stopName: 'Golf Course Road',
+      dateFrom: '2026-08-10',
+      dateTo: '',
+      changeType: 'route_changed',
+    },
+    {
+      admissionNo: 'ADM25003',
+      routeId: routeB._id,
+      stopName: 'Shipra Mall',
+      dateFrom: '2026-04-01',
+      dateTo: '',
+      changeType: 'assigned',
+    },
+    {
+      admissionNo: 'ADM25006',
+      routeId: routeB._id,
+      stopName: 'Ahinsa Khand',
+      dateFrom: '2026-04-01',
+      dateTo: '',
+      changeType: 'assigned',
+    },
+    {
+      admissionNo: 'ADM25009',
+      routeId: routeB._id,
+      stopName: 'Shipra Mall',
+      dateFrom: '2026-04-01',
+      dateTo: '',
+      changeType: 'assigned',
+    },
+    {
+      admissionNo: 'ADM25010',
+      routeId: routeA._id,
+      stopName: 'Main Campus Gate',
+      dateFrom: '2026-04-01',
+      dateTo: '2026-08-12',
+      changeType: 'left_school',
+    },
+  ];
+  for (const log of boardingLogs) {
+    await StudentTransportLog.findOneAndUpdate(
+      {
+        instituteId: institute._id,
+        studentId: studentsByAdmission[log.admissionNo]._id,
+        routeId: log.routeId,
+        dateFrom: log.dateFrom,
+      },
+      {
+        $set: {
+          stopName: log.stopName,
+          dateTo: log.dateTo || undefined,
+          changeType: log.changeType,
+          deletedAt: null,
+        },
+        $setOnInsert: {
+          instituteId: institute._id,
+          studentId: studentsByAdmission[log.admissionNo]._id,
+          routeId: log.routeId,
+          dateFrom: log.dateFrom,
+        },
+      },
+      { upsert: true }
+    );
+  }
+  await Student.updateOne(
+    { _id: studentsByAdmission.ADM25010._id },
+    { $set: { status: 'left' } }
+  );
+  await StudentAttendance.findOneAndUpdate(
+    {
+      instituteId: institute._id,
+      studentId: studentsByAdmission.ADM25001._id,
+      date: '2026-08-14',
+    },
+    {
+      $set: {
+        status: 'absent',
+        sessionId: session._id,
+        classId: classes.C1._id,
+        sectionId: sectionsByClass.C1.A._id,
+        remark: 'Not available for school bus',
+        deletedAt: null,
+      },
+      $setOnInsert: {
+        instituteId: institute._id,
+        studentId: studentsByAdmission.ADM25001._id,
+        date: '2026-08-14',
+      },
+    },
+    { upsert: true }
+  );
+  console.log('[seed] bus boarding history upserted');
 
   console.log('[seed] done');
   console.log('[seed] login:', env.bootstrapAdminEmail, '/', env.bootstrapAdminPassword);

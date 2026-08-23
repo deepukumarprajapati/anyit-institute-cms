@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { authenticate, requirePermission } from '../middleware/auth';
 import { audit } from '../middleware/audit';
 import { Enrollment, Student } from '../models/Student';
+import { StudentTransport, StudentTransportLog } from '../models/Transport';
 import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../utils/errors';
 import { actorFields, instituteFilter, parsePagination } from '../utils/query';
@@ -303,6 +304,13 @@ studentsRouter.patch(
       })
       .parse(req.body);
 
+    const existing = await Student.findOne({ _id: req.params.id, ...instituteFilter(req) });
+    if (!existing) throw new AppError(404, 'NOT_FOUND', 'Student not found');
+    const leaving =
+      Boolean(body.status) &&
+      ['left', 'alumni'].includes(body.status as string) &&
+      existing.status === 'active';
+
     const student = await Student.findOneAndUpdate(
       { _id: req.params.id, ...instituteFilter(req) },
       {
@@ -315,6 +323,23 @@ studentsRouter.patch(
       { new: true }
     );
     if (!student) throw new AppError(404, 'NOT_FOUND', 'Student not found');
+    if (leaving) {
+      const d = new Date();
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      await StudentTransport.updateMany(
+        { instituteId: req.user!.instituteId, studentId: student._id, deletedAt: null },
+        { $set: { deletedAt: new Date(), ...actorFields(req) } }
+      );
+      await StudentTransportLog.updateMany(
+        {
+          instituteId: req.user!.instituteId,
+          studentId: student._id,
+          deletedAt: null,
+          $or: [{ dateTo: null }, { dateTo: '' }, { dateTo: { $exists: false } }],
+        },
+        { $set: { dateTo: today, changeType: 'left_school', ...actorFields(req) } }
+      );
+    }
     return ok(res, student);
   })
 );
