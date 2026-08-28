@@ -1,11 +1,12 @@
 {
-  "exportedAt": "2026-08-23T09:12:09.085Z",
+  "exportedAt": "2026-08-28T13:04:03.821Z",
   "dbName": "anyit_cms",
   "collections": {
     "academicmarks": 240,
-    "academicsessions": 3,
-    "auditlogs": 15,
-    "campus": 2,
+    "academicsessions": 4,
+    "auditlogs": 16,
+    "campus": 3,
+    "campustransfers": 1,
     "classrooms": 6,
     "complaints": 45,
     "enrollments": 30,
@@ -17,10 +18,10 @@
     "feestructures": 12,
     "floors": 3,
     "holidays": 15,
-    "institutes": 1,
+    "institutes": 2,
     "medicalrecords": 30,
     "payrolls": 150,
-    "roles": 6,
+    "roles": 12,
     "salarystructures": 6,
     "schoolclasses": 4,
     "sections": 8,
@@ -37,7 +38,7 @@
     "transportreliefs": 3,
     "transportroutes": 3,
     "unittestreports": 80,
-    "users": 5,
+    "users": 6,
     "vehicles": 3
   },
   "files": [

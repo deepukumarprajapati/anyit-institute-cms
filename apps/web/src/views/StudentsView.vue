@@ -7,6 +7,7 @@
       </div>
       <a-space>
         <a-input-search v-model:value="q" placeholder="Search" allow-clear @search="load" style="width: 220px" />
+        <CampusSwitcher always width="180px" />
         <a-button @click="exportCsv">Export CSV</a-button>
         <RouterLink v-if="auth.can('students.create')" to="/students/new">
           <a-button type="primary">Add student</a-button>
@@ -30,6 +31,9 @@
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'name'">
           <RouterLink :to="`/students/${record._id}`">{{ record.firstName }} {{ record.lastName || '' }}</RouterLink>
+        </template>
+        <template v-else-if="column.key === 'campus'">
+          {{ campusLabel(record) }}
         </template>
         <template v-else-if="column.key === 'status'">
           <a-tag :color="record.status === 'active' ? 'green' : 'default'">{{ record.status }}</a-tag>
@@ -94,12 +98,20 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref, watch } from 'vue';
 import { message } from 'ant-design-vue';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import { useCampusStore } from '@/stores/campus';
+import CampusSwitcher from '@/features/campus/components/CampusSwitcher.vue';
+import { campusDisplayName } from '@/features/campus/types';
 
 const auth = useAuthStore();
+const campus = useCampusStore();
+
+function campusLabel(record: Record<string, any>) {
+  return campusDisplayName(record.campusId);
+}
 const items = ref<Record<string, unknown>[]>([]);
 const loading = ref(false);
 const saving = ref(false);
@@ -128,6 +140,7 @@ const sectionsRaw = ref<any[]>([]);
 const columns = [
   { title: 'Admission No', dataIndex: 'admissionNo' },
   { title: 'Name', key: 'name' },
+  { title: 'Campus', key: 'campus' },
   { title: 'Phone', dataIndex: 'phone' },
   { title: 'Status', key: 'status' },
   { title: 'Actions', key: 'actions' },
@@ -141,6 +154,7 @@ async function load(opts?: { silent?: boolean }) {
         page: pagination.current,
         limit: pagination.pageSize,
         q: q.value || undefined,
+        campusId: campus.queryCampusId,
         deleted: listTab.value === 'deleted' ? '1' : undefined,
       },
     });
@@ -276,4 +290,12 @@ async function saveEnroll() {
 onMounted(async () => {
   await Promise.all([load(), loadMasters()]);
 });
+
+watch(
+  () => campus.selectedId,
+  () => {
+    pagination.current = 1;
+    load({ silent: true });
+  }
+);
 </script>

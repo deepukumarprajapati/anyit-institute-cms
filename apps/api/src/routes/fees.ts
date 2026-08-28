@@ -10,6 +10,7 @@ import { Institute } from '../models/Institute';
 import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../utils/errors';
 import { actorFields, instituteFilter, parsePagination } from '../utils/query';
+import { campusIdForMonth, parseCampusId, studentIdsForCampus } from '../utils/campusScope';
 import { ok, paginationMeta } from '../utils/response';
 import { streamFeeReceiptPdf } from '../services/receiptPdf';
 import {
@@ -23,6 +24,12 @@ const feeCategorySchema = z.enum(FEE_CATEGORIES);
 const feeApplicabilitySchema = z.enum(FEE_APPLICABILITIES);
 function seq(prefix: string) {
   return `${prefix}-${Date.now().toString(36).toUpperCase()}`;
+}
+
+async function campusIdForStudentInvoice(studentId: string, billingMonth: string) {
+  const student = await Student.findById(studentId).select('campusId campusHistory');
+  if (!student) return undefined;
+  return campusIdForMonth(student, billingMonth);
 }
 
 /** One user payment action → one batch (may allocate across several invoices). */
@@ -127,6 +134,7 @@ feesRouter.get(
     const items = await FeeStructure.find(instituteFilter(req))
       .populate('classId', 'name')
       .populate('sessionId', 'name')
+      .populate('campusId', 'name code')
       .populate('items.feeHeadId', 'name code');
     return ok(res, items);
   })
@@ -141,6 +149,7 @@ feesRouter.post(
       .object({
         sessionId: z.string(),
         classId: z.string(),
+        campusId: z.string().optional(),
         name: z.string(),
         items: z.array(z.object({ feeHeadId: z.string(), amount: z.number().nonnegative() })),
         lateFeePerDay: z.number().optional(),
@@ -162,10 +171,12 @@ feesRouter.get(
     const { page, limit, skip } = parsePagination(req);
     const studentId = typeof req.query.studentId === 'string' ? req.query.studentId : undefined;
     const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    const campusStudentIds = await studentIdsForCampus(req, parseCampusId(req));
     const filter = {
       ...instituteFilter(req),
       ...(studentId ? { studentId } : {}),
       ...(status ? { status } : {}),
+      ...(campusStudentIds ? { studentId: studentId || { $in: campusStudentIds } } : {}),
     };
     const [items, total] = await Promise.all([
       FeeInvoice.find(filter)
@@ -183,9 +194,11 @@ feesRouter.get(
   '/dues',
   requirePermission('fees.view'),
   asyncHandler(async (req, res) => {
+    const campusStudentIds = await studentIdsForCampus(req, parseCampusId(req));
     const items = await FeeInvoice.find({
       ...instituteFilter(req),
       status: { $in: ['issued', 'partial'] },
+      ...(campusStudentIds ? { studentId: { $in: campusStudentIds } } : {}),
     })
       .populate('studentId', 'firstName lastName admissionNo')
       .sort('-dueDate')
@@ -782,6 +795,7 @@ feesRouter.post(
           studentId: body.studentId,
           sessionId,
           structureId: body.structureId,
+          campusId: await campusIdForStudentInvoice(body.studentId, billingMonth),
           billingMonth,
           dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
           items: [
@@ -858,6 +872,7 @@ feesRouter.post(
       studentId: body.studentId,
       sessionId,
       structureId: body.structureId,
+      campusId: await campusIdForStudentInvoice(body.studentId, billingMonth),
       billingMonth,
       dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
       items,

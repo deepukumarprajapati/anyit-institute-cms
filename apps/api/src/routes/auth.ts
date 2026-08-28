@@ -1,13 +1,16 @@
 import bcrypt from 'bcryptjs';
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
+import { HydratedDocument } from 'mongoose';
 import { z } from 'zod';
 import { env } from '../config/env';
 import { authenticate, signAccessToken, signRefreshToken } from '../middleware/auth';
 import { Institute } from '../models/Institute';
 import { Role } from '../models/Role';
-import { User } from '../models/User';
+import { IUser, User } from '../models/User';
+import { provisionInstitute } from '../services/provisionInstitute';
 import { asyncHandler } from '../utils/asyncHandler';
+import { campusDetailsSchema } from '../utils/campusFields';
 import { AppError } from '../utils/errors';
 import { ok } from '../utils/response';
 import { notDeleted } from '../models/base';
@@ -16,6 +19,66 @@ const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
 });
+
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .optional()
+    .transform((value) => (value ? value : undefined));
+
+const signupSchema = z.object({
+  instituteName: z.string().trim().min(2).max(120),
+  instituteCode: optionalText(16),
+  adminName: z.string().trim().min(2).max(80),
+  email: z.string().email(),
+  password: z.string().min(8).max(100),
+  phone: optionalText(20),
+  address: optionalText(300),
+  pincode: z
+    .string()
+    .trim()
+    .max(6)
+    .optional()
+    .transform((value) => (value ? value : undefined))
+    .refine((value) => !value || /^\d{6}$/.test(value), 'Pincode must be 6 digits'),
+  branch: campusDetailsSchema
+    .omit({ isPrimary: true, imageUrl: true })
+    .partial({ code: true })
+    .optional(),
+});
+
+async function issueAuthSession(user: HydratedDocument<IUser>) {
+  const role = await Role.findById(user.roleId);
+  if (!role) throw new AppError(403, 'FORBIDDEN', 'Role missing');
+
+  const accessToken = signAccessToken({
+    id: String(user._id),
+    instituteId: String(user.instituteId),
+    roleId: String(user.roleId),
+  });
+  const refreshToken = signRefreshToken({
+    id: String(user._id),
+    instituteId: String(user.instituteId),
+  });
+
+  user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+  user.lastLoginAt = new Date();
+  await user.save();
+
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      instituteId: user.instituteId,
+      role: { id: role._id, key: role.key, name: role.name, permissions: role.permissions },
+    },
+  };
+}
 
 export const authRouter = Router();
 
@@ -43,34 +106,49 @@ authRouter.post(
     const valid = await bcrypt.compare(body.password, user.passwordHash);
     if (!valid) throw new AppError(401, 'INVALID_CREDENTIALS', 'Invalid email or password');
 
-    const role = await Role.findById(user.roleId);
-    if (!role) throw new AppError(403, 'FORBIDDEN', 'Role missing');
+    return ok(res, await issueAuthSession(user));
+  })
+);
 
-    const accessToken = signAccessToken({
-      id: String(user._id),
-      instituteId: String(user.instituteId),
-      roleId: String(user.roleId),
+authRouter.post(
+  '/signup',
+  asyncHandler(async (req, res) => {
+    const body = signupSchema.parse(req.body);
+    const { user, campus, branchCampus } = await provisionInstitute({
+      instituteName: body.instituteName,
+      instituteCode: body.instituteCode || undefined,
+      adminName: body.adminName,
+      email: body.email,
+      password: body.password,
+      phone: body.phone || undefined,
+      address: body.address || undefined,
+      pincode: body.pincode || undefined,
+      branch: body.branch?.name
+        ? {
+            name: body.branch.name,
+            code: body.branch.code || 'BR1',
+            schoolCode: body.branch.schoolCode,
+            phone: body.branch.phone,
+            address: body.branch.address,
+            pincode: body.branch.pincode,
+            mapUrl: body.branch.mapUrl,
+            latitude: body.branch.latitude,
+            longitude: body.branch.longitude,
+          }
+        : undefined,
     });
-    const refreshToken = signRefreshToken({
-      id: String(user._id),
-      instituteId: String(user.instituteId),
-    });
-
-    user.refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-    user.lastLoginAt = new Date();
-    await user.save();
-
-    return ok(res, {
-      accessToken,
-      refreshToken,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        instituteId: user.instituteId,
-        role: { id: role._id, key: role.key, name: role.name, permissions: role.permissions },
+    return ok(
+      res,
+      {
+        ...(await issueAuthSession(user)),
+        campuses: {
+          headOfficeId: String(campus._id),
+          branchId: branchCampus ? String(branchCampus._id) : undefined,
+        },
       },
-    });
+      undefined,
+      201
+    );
   })
 );
 

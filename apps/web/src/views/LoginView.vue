@@ -19,8 +19,12 @@
             Sign in
           </a-button>
         </a-form>
+        <a-typography-text type="secondary" style="display: block; margin-top: 16px; text-align: center">
+          New institute?
+          <router-link to="/signup">Create an account</router-link>
+        </a-typography-text>
         <a-typography-text type="secondary" style="display: block; margin-top: 12px">
-          admin@anyit.local / Admin@12345
+          Demo: admin@anyit.local / Admin@12345
           <br />
           Also: teacher@ · accountant@ · principal@ · receptionist@anyit.local
         </a-typography-text>

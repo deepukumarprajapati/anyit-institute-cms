@@ -6,6 +6,7 @@
         <p>Structures, invoices, collections, and dues</p>
       </div>
       <a-space>
+        <CampusSwitcher always width="180px" />
         <a-button
           v-if="auth.can('fees.manage') || auth.can('fees.collect')"
           type="primary"
@@ -278,14 +279,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { message } from 'ant-design-vue';
 import { FEE_APPLICABILITIES, FEE_APPLICABILITY_LABELS, FEE_CATEGORIES, FEE_CATEGORY_LABELS, type FeeApplicability, type FeeCategory } from '@anyit/shared';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import { useCampusStore } from '@/stores/campus';
 import DraggableDialog from '@/components/DraggableDialog.vue';
+import CampusSwitcher from '@/features/campus/components/CampusSwitcher.vue';
 
 const auth = useAuthStore();
+const campus = useCampusStore();
 const loading = ref(false);
 const saving = ref(false);
 const invoices = ref<Record<string, unknown>[]>([]);
@@ -427,11 +431,11 @@ async function load(opts?: { silent?: boolean }) {
   if (!opts?.silent) loading.value = true;
   try {
     const [inv, pay, str, hd, due, sessions, classes, tiers] = await Promise.all([
-      api.get('/fees/invoices'),
+      api.get('/fees/invoices', { params: { campusId: campus.queryCampusId } }),
       api.get('/fees/payments'),
       api.get('/fees/structures'),
       api.get('/fees/heads'),
-      api.get('/fees/dues'),
+      api.get('/fees/dues', { params: { campusId: campus.queryCampusId } }),
       api.get('/sessions'),
       api.get('/classes'),
       api.get('/transport/fee-tiers').catch(() => ({ data: { data: [] } })),
@@ -668,6 +672,11 @@ async function createStructure() {
 }
 
 onMounted(load);
+
+watch(
+  () => campus.selectedId,
+  () => load({ silent: true })
+);
 </script>
 
 <style scoped>

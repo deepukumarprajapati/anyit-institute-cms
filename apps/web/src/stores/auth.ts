@@ -48,13 +48,51 @@ export const useAuthStore = defineStore('auth', () => {
     return needed.some((p) => perms.includes(p));
   }
 
+  async function applyAuthPayload(payload: { accessToken: string; refreshToken: string; user: AuthUser }) {
+    setTokens(payload.accessToken, payload.refreshToken);
+    user.value = payload.user;
+    return payload.user;
+  }
+
   async function login(email: string, password: string) {
     loading.value = true;
     try {
       const { data } = await api.post('/auth/login', { email, password });
-      setTokens(data.data.accessToken, data.data.refreshToken);
-      user.value = data.data.user;
-      return data.data.user as AuthUser;
+      return await applyAuthPayload(data.data);
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function signup(payload: {
+    instituteName: string;
+    instituteCode?: string;
+    adminName: string;
+    email: string;
+    password: string;
+    phone?: string;
+    address?: string;
+    pincode?: string;
+    branch?: {
+      name: string;
+      code?: string;
+      schoolCode?: string;
+      phone?: string;
+      address?: string;
+      pincode?: string;
+      mapUrl?: string;
+      latitude?: number;
+      longitude?: number;
+    };
+  }) {
+    loading.value = true;
+    try {
+      const { data } = await api.post('/auth/signup', payload);
+      await applyAuthPayload(data.data);
+      return data.data as {
+        user: AuthUser;
+        campuses?: { headOfficeId: string; branchId?: string };
+      };
     } finally {
       loading.value = false;
     }
@@ -96,6 +134,7 @@ export const useAuthStore = defineStore('auth', () => {
     permissions,
     can,
     login,
+    signup,
     fetchMe,
     logout,
     setTokens,

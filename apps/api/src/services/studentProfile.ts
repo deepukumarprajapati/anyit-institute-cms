@@ -500,7 +500,9 @@ export async function buildStudentProfile(req: Request, studentId: string) {
     throw new AppError(400, 'INVALID_ID', 'Invalid student id');
   }
 
-  const student = await Student.findOne({ _id: studentId, ...instituteFilter(req) });
+  const student = await Student.findOne({ _id: studentId, ...instituteFilter(req) })
+    .populate('campusId', 'name code schoolCode isPrimary')
+    .populate('campusHistory.campusId', 'name code schoolCode isPrimary');
   if (!student) throw new AppError(404, 'NOT_FOUND', 'Student not found');
 
   const sessions = await AcademicSession.find(instituteFilter(req)).sort('-startDate').lean();

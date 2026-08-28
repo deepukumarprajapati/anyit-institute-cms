@@ -10,9 +10,20 @@ export interface IGuardian {
   isPrimary?: boolean;
 }
 
+export interface ICampusHistoryEntry {
+  campusId: Types.ObjectId;
+  fromMonth: string;
+  toMonth?: string | null;
+  reason?: string;
+  notes?: string;
+  transferredAt: Date;
+  transferredBy?: Types.ObjectId;
+}
+
 export interface IStudent {
   instituteId: Types.ObjectId;
   campusId?: Types.ObjectId;
+  campusHistory?: ICampusHistoryEntry[];
   admissionNo: string;
   firstName: string;
   lastName?: string;
@@ -59,6 +70,17 @@ const studentSchema = new Schema<IStudent>(
       },
     ],
     photoUrl: String,
+    campusHistory: [
+      {
+        campusId: { type: Schema.Types.ObjectId, ref: 'Campus', required: true },
+        fromMonth: { type: String, required: true },
+        toMonth: String,
+        reason: String,
+        notes: String,
+        transferredAt: { type: Date, default: Date.now },
+        transferredBy: { type: Schema.Types.ObjectId, ref: 'User' },
+      },
+    ],
     ...auditFields,
   },
   { timestamps: true }

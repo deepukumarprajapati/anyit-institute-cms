@@ -7,6 +7,7 @@ export interface IInstitute {
   email?: string;
   phone?: string;
   address?: string;
+  pincode?: string;
   logoUrl?: string;
   loginBackgroundUrl?: string;
   settings: {
@@ -27,6 +28,7 @@ const instituteSchema = new Schema<IInstitute>(
     email: String,
     phone: String,
     address: String,
+    pincode: String,
     logoUrl: String,
     loginBackgroundUrl: String,
     settings: {

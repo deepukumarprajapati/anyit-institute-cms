@@ -7,12 +7,8 @@ import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
 import { errorHandler } from './utils/errors';
 import { authRouter } from './routes/auth';
-import {
-  campusesRouter,
-  instituteRouter,
-  rolesRouter,
-  usersRouter,
-} from './routes/institute';
+import { campusesRouter } from './routes/campuses';
+import { instituteRouter, rolesRouter, usersRouter } from './routes/institute';
 import {
   classesRouter,
   classroomsRouter,
@@ -28,7 +24,8 @@ import { feesRouter } from './routes/fees';
 import { salaryRouter } from './routes/salary';
 import { transportRouter } from './routes/transport';
 import { eventsRouter } from './routes/events';
-import { auditRouter, dashboardRouter, uploadsRouter } from './routes/misc';
+import { auditRouter, uploadsRouter } from './routes/misc';
+import { dashboardRouter } from './routes/dashboard';
 import { ok } from './utils/response';
 
 function resolveCorsOrigin(raw: string): boolean | string | string[] | ((origin: string | undefined, cb: (err: Error | null, allow?: boolean | string) => void) => void) {

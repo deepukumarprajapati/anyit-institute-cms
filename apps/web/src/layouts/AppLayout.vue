@@ -28,7 +28,10 @@
           <strong>{{ auth.user?.name }}</strong>
           <a-tag color="green" style="margin-left: 8px">{{ auth.user?.role.name }}</a-tag>
         </div>
-        <a-button @click="onLogout">Logout</a-button>
+        <div class="header-actions">
+          <CampusSwitcher />
+          <a-button @click="onLogout">Logout</a-button>
+        </div>
       </a-layout-header>
       <a-layout-content class="content">
         <RouterView />
@@ -38,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, ref } from 'vue';
+import { computed, h, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { ItemType } from 'ant-design-vue';
 import {
@@ -58,12 +61,19 @@ import {
   WalletOutlined,
 } from '@ant-design/icons-vue';
 import { useAuthStore } from '@/stores/auth';
+import { useCampusStore } from '@/stores/campus';
+import CampusSwitcher from '@/features/campus/components/CampusSwitcher.vue';
 import type { Permission } from '@anyit/shared';
 
 const auth = useAuthStore();
+const campus = useCampusStore();
 const router = useRouter();
 const route = useRoute();
 const collapsed = ref(false);
+
+onMounted(() => {
+  campus.load();
+});
 
 const nav: {
   to: string;
@@ -195,6 +205,11 @@ async function onLogout() {
   justify-content: space-between;
   padding: 0 20px;
   border-bottom: 1px solid #f0f0f0;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .content {
   margin: 16px;

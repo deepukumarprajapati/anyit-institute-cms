@@ -6,9 +6,13 @@
         <p>
           Live operations snapshot
           <span v-if="data?.activeSession" class="session-pill">{{ data.activeSession.name }}</span>
+          <span v-if="!campus.isAll" class="session-pill">{{ campus.label }}</span>
         </p>
       </div>
-      <a-button @click="load" :loading="loading">Refresh</a-button>
+      <a-space>
+        <CampusSwitcher always />
+        <a-button @click="load" :loading="loading">Refresh</a-button>
+      </a-space>
     </div>
 
     <a-spin :spinning="loading">
@@ -27,6 +31,12 @@
           </a-card>
         </a-col>
       </a-row>
+
+      <BranchComparisonTable
+        style="margin-top: 16px"
+        :rows="data?.byCampus || []"
+        :danger-color="COLORS.danger"
+      />
 
       <!-- Fees & Salary finance -->
       <a-row :gutter="[16, 16]" style="margin-top: 16px">
@@ -283,11 +293,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, onMounted, onUnmounted, ref } from 'vue';
+import { computed, h, onMounted, onUnmounted, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 import type { EChartsCoreOption } from 'echarts/core';
 import api from '@/lib/api';
 import DashboardChart from '@/components/DashboardChart.vue';
+import BranchComparisonTable from '@/features/campus/components/BranchComparisonTable.vue';
+import CampusSwitcher from '@/features/campus/components/CampusSwitcher.vue';
+import type { BranchDashboardRow } from '@/features/campus/types';
+import { useCampusStore } from '@/stores/campus';
 
 type FeeStudentRow = {
   studentId: string;
@@ -331,6 +345,8 @@ type Dashboard = {
   attendancePct: number;
   attendancePctPeriod?: number;
   campusCount: number;
+  selectedCampusId?: string | null;
+  byCampus?: BranchDashboardRow[];
   trendDays?: number;
   activeSession?: { name: string };
   upcomingEvents: { _id: string; title: string; startAt: string; audience: string }[];
@@ -381,6 +397,7 @@ const COLORS = {
 };
 
 const data = ref<Dashboard | null>(null);
+const campus = useCampusStore();
 const loading = ref(false);
 const feeDiveOpen = ref(false);
 const salaryDiveOpen = ref(false);
@@ -401,7 +418,7 @@ const kpiCards = computed(() => [
     title: 'Active students',
     value: data.value?.counts.students ?? 0,
     color: COLORS.teal,
-    hint: `${data.value?.campusCount ?? 0} campuses`,
+    hint: campus.isAll ? `${data.value?.campusCount ?? 0} campuses` : campus.label,
   },
   {
     title: 'Active staff',
@@ -926,7 +943,9 @@ async function load(opts?: { silent?: boolean }) {
   // Keep dashboard content mounted; only spin overlay (never blank the page)
   if (!opts?.silent || !data.value) loading.value = true;
   try {
-    const { data: res } = await api.get('/dashboard');
+    const { data: res } = await api.get('/dashboard', {
+      params: { campusId: campus.queryCampusId },
+    });
     data.value = res.data;
   } finally {
     loading.value = false;
@@ -937,6 +956,13 @@ onMounted(() => {
   window.addEventListener('resize', onResize);
   load();
 });
+
+watch(
+  () => campus.selectedId,
+  () => {
+    load({ silent: true });
+  }
+);
 
 onUnmounted(() => {
   window.removeEventListener('resize', onResize);

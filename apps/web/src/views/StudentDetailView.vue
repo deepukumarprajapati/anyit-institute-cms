@@ -56,6 +56,17 @@
             </a-upload>
           </div>
           <a-descriptions :column="1" size="small" bordered style="margin-top: 16px">
+            <a-descriptions-item label="Campus">
+              {{ campusName }}
+              <a-button
+                v-if="auth.can('students.update')"
+                size="small"
+                type="link"
+                @click="transferOpen = true"
+              >
+                Transfer branch
+              </a-button>
+            </a-descriptions-item>
             <a-descriptions-item label="Admission">{{ profile.student.admissionNo }}</a-descriptions-item>
             <a-descriptions-item label="Gender">{{ profile.student.gender || '—' }}</a-descriptions-item>
             <a-descriptions-item label="DOB">
@@ -114,6 +125,8 @@
             :data-source="profile.enrollments || []"
             :columns="enrollmentColumns"
           />
+
+          <StudentCampusHistory :history="profile.student.campusHistory || []" />
         </a-card>
       </a-col>
 
@@ -874,6 +887,13 @@
         </a-form-item>
       </a-form>
     </a-modal>
+
+    <TransferCampusModal
+      v-if="profile.student._id"
+      v-model:open="transferOpen"
+      :student-id="profile.student._id"
+      @transferred="load({ silent: true })"
+    />
     </a-spin>
   </div>
 </template>
@@ -887,6 +907,9 @@ import { FEE_CATEGORY_LABELS, type FeeCategory } from '@anyit/shared';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import DraggableDialog from '@/components/DraggableDialog.vue';
+import StudentCampusHistory from '@/features/campus/components/StudentCampusHistory.vue';
+import TransferCampusModal from '@/features/campus/components/TransferCampusModal.vue';
+import { campusDisplayName } from '@/features/campus/types';
 
 const auth = useAuthStore();
 const route = useRoute();
@@ -923,6 +946,10 @@ const selectedYear = computed(() => {
   if (!years.length) return null;
   return years.find((y: { sessionId: string }) => y.sessionId === selectedSessionId.value) || years[0];
 });
+
+const campusName = computed(() => campusDisplayName(profile.value?.student?.campusId));
+
+const transferOpen = ref(false);
 
 const classLabel = computed(() => {
   const e = selectedYear.value?.enrollment;
@@ -1955,7 +1982,9 @@ watch(
   }
 );
 
-onMounted(load);
+onMounted(() => {
+  load();
+});
 </script>
 
 <style scoped>

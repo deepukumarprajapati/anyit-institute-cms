@@ -17,6 +17,12 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true },
   },
   {
+    path: '/signup',
+    name: 'signup',
+    component: () => import('@/views/SignupView.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/',
     component: () => import('@/layouts/AppLayout.vue'),
     children: [
@@ -37,6 +43,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'events/:id', name: 'event-detail', component: () => import('@/views/EventDetailView.vue'), meta: { permission: 'events.view' } },
       { path: 'academic', name: 'academic', component: () => import('@/views/AcademicView.vue'), meta: { permission: ['sessions.manage', 'classes.manage'] } },
       { path: 'institute', name: 'institute', component: () => import('@/views/InstituteView.vue'), meta: { permission: 'institute.view' } },
+      { path: 'branches/:id', name: 'branch-detail', component: () => import('@/features/campus/views/BranchDetailView.vue'), meta: { permission: 'dashboard.view' } },
       { path: 'roles', name: 'roles', component: () => import('@/views/RolesView.vue'), meta: { permission: 'roles.manage' } },
       { path: 'users', name: 'users', component: () => import('@/views/UsersView.vue'), meta: { permission: 'users.manage' } },
       { path: 'audit', name: 'audit', component: () => import('@/views/AuditView.vue'), meta: { permission: 'audit.view' } },
@@ -52,7 +59,9 @@ export const router = createRouter({
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
   if (to.meta.public) {
-    if (auth.isAuthenticated && to.name === 'login') return { name: 'dashboard' };
+    if (auth.isAuthenticated && (to.name === 'login' || to.name === 'signup')) {
+      return { name: 'dashboard' };
+    }
     return true;
   }
   if (!auth.isAuthenticated) return { name: 'login', query: { redirect: to.fullPath } };

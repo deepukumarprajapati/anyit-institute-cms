@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { authenticate, requirePermission } from '../middleware/auth';
 import { audit } from '../middleware/audit';
 import { Institute } from '../models/Institute';
-import { Campus } from '../models/Campus';
 import { Role } from '../models/Role';
 import { User } from '../models/User';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -38,6 +37,12 @@ instituteRouter.patch(
         email: z.string().email().optional(),
         phone: z.string().optional(),
         address: z.string().optional(),
+        pincode: z
+          .string()
+          .trim()
+          .max(6)
+          .optional()
+          .refine((value) => !value || /^\d{6}$/.test(value), 'Pincode must be 6 digits'),
         logoUrl: z.string().optional(),
         loginBackgroundUrl: z.string().optional(),
         settings: z
@@ -57,86 +62,6 @@ instituteRouter.patch(
     );
     if (!institute) throw new AppError(404, 'NOT_FOUND', 'Institute not found');
     return ok(res, institute);
-  })
-);
-
-export const campusesRouter = Router();
-campusesRouter.use(authenticate);
-
-campusesRouter.get(
-  '/',
-  requirePermission('campuses.manage', 'institute.view'),
-  asyncHandler(async (req, res) => {
-    const items = await Campus.find(instituteFilter(req)).sort('name');
-    return ok(res, items);
-  })
-);
-
-campusesRouter.post(
-  '/',
-  requirePermission('campuses.manage'),
-  audit('campus', 'create'),
-  asyncHandler(async (req, res) => {
-    const body = z
-      .object({
-        name: z.string().min(2),
-        code: z.string().min(1),
-        address: z.string().optional(),
-        phone: z.string().optional(),
-        isPrimary: z.boolean().optional(),
-      })
-      .parse(req.body);
-    if (body.isPrimary) {
-      await Campus.updateMany(instituteFilter(req), { $set: { isPrimary: false } });
-    }
-    const campus = await Campus.create({
-      ...body,
-      instituteId: req.user!.instituteId,
-      ...actorFields(req, true),
-    });
-    return ok(res, campus, undefined, 201);
-  })
-);
-
-campusesRouter.patch(
-  '/:id',
-  requirePermission('campuses.manage'),
-  audit('campus', 'update'),
-  asyncHandler(async (req, res) => {
-    const body = z
-      .object({
-        name: z.string().min(2).optional(),
-        code: z.string().min(1).optional(),
-        address: z.string().optional(),
-        phone: z.string().optional(),
-        isPrimary: z.boolean().optional(),
-      })
-      .parse(req.body);
-    if (body.isPrimary) {
-      await Campus.updateMany(instituteFilter(req), { $set: { isPrimary: false } });
-    }
-    const campus = await Campus.findOneAndUpdate(
-      { _id: req.params.id, ...instituteFilter(req) },
-      { $set: { ...body, ...actorFields(req) } },
-      { new: true }
-    );
-    if (!campus) throw new AppError(404, 'NOT_FOUND', 'Campus not found');
-    return ok(res, campus);
-  })
-);
-
-campusesRouter.delete(
-  '/:id',
-  requirePermission('campuses.manage'),
-  audit('campus', 'delete'),
-  asyncHandler(async (req, res) => {
-    const campus = await Campus.findOneAndUpdate(
-      { _id: req.params.id, ...instituteFilter(req) },
-      { $set: { deletedAt: new Date(), ...actorFields(req) } },
-      { new: true }
-    );
-    if (!campus) throw new AppError(404, 'NOT_FOUND', 'Campus not found');
-    return ok(res, campus);
   })
 );
 

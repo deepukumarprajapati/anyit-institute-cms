@@ -7,11 +7,15 @@ import { StudentTransport, StudentTransportLog } from '../models/Transport';
 import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../utils/errors';
 import { actorFields, instituteFilter, parsePagination } from '../utils/query';
+import { parseCampusId, currentMonthKey } from '../utils/campusScope';
 import { ok, paginationMeta } from '../utils/response';
 import { buildStudentProfile } from '../services/studentProfile';
+import { applyCampusTransfer } from '../services/campusTransfer';
+import { registerCampusTransferRoutes } from './campusTransfers';
 
 export const studentsRouter = Router();
 studentsRouter.use(authenticate);
+registerCampusTransferRoutes(studentsRouter);
 
 studentsRouter.get(
   '/',
@@ -22,6 +26,7 @@ studentsRouter.get(
     const filter = {
       ...instituteFilter(req),
       ...(status ? { status } : {}),
+      ...(parseCampusId(req) ? { campusId: parseCampusId(req) } : {}),
       ...(q
         ? {
             $or: [
@@ -33,7 +38,7 @@ studentsRouter.get(
         : {}),
     };
     const [items, total] = await Promise.all([
-      Student.find(filter).skip(skip).limit(limit).sort('-createdAt'),
+      Student.find(filter).populate('campusId', 'name code schoolCode isPrimary').skip(skip).limit(limit).sort('-createdAt'),
       Student.countDocuments(filter),
     ]);
     return ok(res, items, paginationMeta(page, limit, total));
@@ -251,11 +256,23 @@ studentsRouter.post(
       })
       .parse(req.body);
 
+    const month = currentMonthKey();
     const student = await Student.create({
       ...body,
       email: body.email || undefined,
       dob: body.dob ? new Date(body.dob) : undefined,
       documents: body.documents || [],
+      campusHistory: body.campusId
+        ? [
+            {
+              campusId: body.campusId,
+              fromMonth: month,
+              reason: 'admission',
+              transferredAt: new Date(),
+              transferredBy: req.user!.id,
+            },
+          ]
+        : [],
       instituteId: req.user!.instituteId,
       ...actorFields(req, true),
     });
@@ -311,11 +328,22 @@ studentsRouter.patch(
       ['left', 'alumni'].includes(body.status as string) &&
       existing.status === 'active';
 
+    if (body.campusId && String(existing.campusId || '') !== body.campusId) {
+      await applyCampusTransfer({
+        student: existing,
+        toCampusId: body.campusId,
+        reason: 'profile_update',
+        actorId: req.user!.id,
+        instituteId: String(req.user!.instituteId),
+      });
+    }
+
+    const { campusId: _campusId, ...rest } = body;
     const student = await Student.findOneAndUpdate(
       { _id: req.params.id, ...instituteFilter(req) },
       {
         $set: {
-          ...body,
+          ...rest,
           ...(body.dob ? { dob: new Date(body.dob) } : {}),
           ...actorFields(req),
         },

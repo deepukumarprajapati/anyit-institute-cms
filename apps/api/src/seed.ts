@@ -57,6 +57,7 @@ async function seed() {
       name: env.bootstrapInstituteName,
       code: 'ANYIT',
       email: env.bootstrapAdminEmail,
+      pincode: '201301',
       settings: { timezone: 'Asia/Kolkata', currency: 'INR', academicYearLabel: '2026-27' },
     });
     console.log('[seed] institute created');
@@ -71,6 +72,7 @@ async function seed() {
       isPrimary: true,
       address: '12 Knowledge Park, Sector 62, Noida',
       phone: '+91-120-4001000',
+      pincode: '201301',
     },
     {
       name: 'East Campus',
@@ -78,6 +80,11 @@ async function seed() {
       isPrimary: false,
       address: '45 Learning Avenue, Indirapuram, Ghaziabad',
       phone: '+91-120-4002000',
+      pincode: '201014',
+      schoolCode: 'UP-GZB-EAST-01',
+      mapUrl: 'https://maps.google.com/?q=28.6280,77.3720',
+      latitude: 28.628,
+      longitude: 77.372,
     },
   ];
   const campuses: Record<string, typeof Campus.prototype> = {};
@@ -90,6 +97,11 @@ async function seed() {
           isPrimary: def.isPrimary,
           address: def.address,
           phone: def.phone,
+          pincode: def.pincode,
+          schoolCode: def.isPrimary ? null : def.schoolCode || null,
+          mapUrl: def.mapUrl || null,
+          latitude: def.latitude,
+          longitude: def.longitude,
           deletedAt: null,
         },
         $setOnInsert: { instituteId: institute._id, code: def.code },

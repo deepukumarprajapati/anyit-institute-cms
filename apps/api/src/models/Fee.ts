@@ -65,6 +65,7 @@ export interface IFeeStructure {
   instituteId: Types.ObjectId;
   sessionId: Types.ObjectId;
   classId: Types.ObjectId;
+  campusId?: Types.ObjectId;
   name: string;
   items: { feeHeadId: Types.ObjectId; amount: number }[];
   lateFeePerDay?: number;
@@ -78,6 +79,7 @@ const feeStructureSchema = new Schema<IFeeStructure>(
     ...instituteScoped,
     sessionId: { type: Schema.Types.ObjectId, ref: 'AcademicSession', required: true },
     classId: { type: Schema.Types.ObjectId, ref: 'SchoolClass', required: true },
+    campusId: { type: Schema.Types.ObjectId, ref: 'Campus' },
     name: { type: String, required: true },
     items: [
       {
@@ -110,6 +112,8 @@ export interface IFeeInvoice {
   studentId: Types.ObjectId;
   sessionId: Types.ObjectId;
   structureId?: Types.ObjectId;
+  /** Campus this invoice was billed under (student's branch for that month). */
+  campusId?: Types.ObjectId;
   invoiceNo: string;
   /** Billing month YYYY-MM — which month this invoice covers */
   billingMonth?: string;
@@ -134,6 +138,7 @@ const feeInvoiceSchema = new Schema<IFeeInvoice>(
     studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
     sessionId: { type: Schema.Types.ObjectId, ref: 'AcademicSession', required: true },
     structureId: { type: Schema.Types.ObjectId, ref: 'FeeStructure' },
+    campusId: { type: Schema.Types.ObjectId, ref: 'Campus', index: true },
     invoiceNo: { type: String, required: true },
     billingMonth: { type: String, index: true },
     dueDate: Date,
